@@ -124,6 +124,30 @@ hist(activity_day[["steps"]], breaks = 10,
      xlab = "Steps per Day")
 ```
 
-The minimum number of steps per day is `r min_steps_NoNA` and the maximum number  is `r max_steps_NoNA`. The mean number is `r mean_steps_NoNA` and the median is `r med_steps_NoNA`. 
+The minimum number of steps per day is `r min_steps_NoNA` and the maximum number  is `r max_steps_NoNA`. The mean number is `r mean_steps_NoNA` and the median is `r med_steps_NoNA`.  
+
+In comparision with the original data (containing NAs) both **mean and median are now higher**. (Original values were `r mean_steps` and `r med_steps` respectively.)
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+**Note:**  
+Names of days depend on the locale. To have a defined environment I set the locale to *English_United States*.
+
+```{r}
+lc_time = Sys.getlocale("LC_TIME")
+if (grepl("windows",Sys.getenv("OS"), ignore.case = TRUE)) {
+    Sys.setlocale(category = "LC_TIME", locale = "English_United States")
+}
+```
+
+And now add the new factor variable *day* to the dataset using *Sat* and *Sun* as indicator for the weekend and use *aggregate* to calculate the means.
+
+```{r}
+activityNoNA$day <- as.factor(unlist
+                              (lapply(activityNoNA$date, 
+                                      function(x) {if (weekdays(x, abbreviate = TRUE) %in% c("Sat", "Sun"))
+                                          {"weekend"} else {"weekday"}})))
+activityNoNA_int <- aggregate(activityNoNA["steps"], by = activityNoNA[c("day", "interval")], FUN = mean)
+```
+
+**Sorry, plots missing due to lack of time**
