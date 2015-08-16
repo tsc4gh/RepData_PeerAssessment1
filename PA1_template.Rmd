@@ -8,18 +8,122 @@ output:
 
 ## Loading and preprocessing the data
 
+Data are loaded using *read.csv*. Dates are kept as dates (and not changed to factors).
+
+```{r}
+activity <- read.csv("activity.csv", stringsAsFactors = FALSE)
+activity$date <- as.POSIXct(activity$date)
+str(activity)
+```
+
 
 
 ## What is mean total number of steps taken per day?
 
+Function *aggregate* is used sum up steps per day.
+
+```{r}
+activity_day <- aggregate(activity["steps"], by = activity["date"], FUN = sum)
+max_steps <- max(activity_day$steps, na.rm = TRUE)
+min_steps <- min(activity_day$steps, na.rm = TRUE)
+mean_steps <- format(mean(activity_day$steps, na.rm = TRUE), digits = 7, scientific = FALSE)
+med_steps <- median(activity_day$steps, na.rm = TRUE)
+```
+
+The figure below shows the distribution of the total number of steps taken per day.
+
+```{r}
+hist(activity_day[["steps"]], breaks = 10, 
+     main = "Distribution of Total Number of Steps per Day",
+     xlab = "Steps per Day")
+```
+
+The minimum number of steps per day is `r min_steps` and the maximum number  is `r max_steps`. The mean number is `r mean_steps` and the median is `r med_steps`. (All numbers calculated while ignoring NAs). 
 
 
 ## What is the average daily activity pattern?
 
+Function *aggregate* is used to calculate the mean number of steps per interval.
+
+```{r}
+activity_int <- aggregate(activity["steps"], by = activity["interval"], FUN = mean, na.rm = TRUE)
+int_max_steps <- activity_int[match(max(activity_int$steps), activity_int$steps),1]
+```
+
+The figure below shows the daily activity pattern as mean number of steps per interval. Labels on the x-axis show strting time of intervals in format *hhmm*.
+
+```{r}
+plot(activity_int, type = "l",
+    main = "Mean Number of Steps per Five Minute Time Interval",
+    xlab = "Time", ylab =  "Steps")
+```
+
+The maximum number of steps for an interval is seen for interval `r int_max_steps`.
 
 
 ## Imputing missing values
 
+The number of missing values in the data set may easily be read from *str(activity)*. Here an alternativa approach is shown.
 
+```{r}
+missingValues <- nrow(activity) - nrow(na.omit(activity))
+missingSteps <- sum(is.na(activity$steps))
+missingDate <- sum(is.na(activity$date))
+missingInt <- sum(is.na(activity$interval))
+```
+
+The number of missing values (rows with NA) is `r missingValues`. All missing values relate to column **steps**, as missing values for **date** and **interval** are `r missingDate` and `r missingInt` respectively. 
+
+### Imputing strategy
+
+Missing values are replaced by the mean number of steps for day of week and interval.
+
+### Imputation
+
+First build build dataset *activityWD_int* containing means of steps for day of week and interval.
+
+```{r}
+activityWD <- activity
+activityWD$wkday <- weekdays(activityWD$date, abbreviate = TRUE)
+activityWD_int <- aggregate(activityWD["steps"], 
+                            by = activityWD[c("wkday","interval")], 
+                            FUN = mean, na.rm = TRUE)
+activityWD_int$wkday_int <- paste0(activityWD_int$wkday, "_", activityWD_int$interval)
+```
+
+Next build dataset *activityNoNA* with imputed values.
+
+```{r}
+activityNoNA <- activity
+for (i in seq_along(activityNoNA$steps)) {
+    if (is.na(activityNoNA[i,"steps"])) {
+        activityNoNA[i, "steps"] <- 
+            activityWD_int[match(paste0(weekdays(activityNoNA[i, "date"], abbreviate = TRUE),"_", 
+                                        activityNoNA[i, "interval"]), 
+                                 activityWD_int$wkday_int), "steps"]
+    }
+}
+```
+
+
+Function *aggregate* is used sum up steps per day.
+
+```{r}
+activity_day <- aggregate(activityNoNA["steps"], by = activityNoNA["date"], FUN = sum)
+max_steps_NoNA <- format(max(activity_day$steps, na.rm = TRUE), digits = 7, scientific = FALSE)
+min_steps_NoNA <- min(activity_day$steps, na.rm = TRUE)
+mean_steps_NoNA <- format(mean(activity_day$steps, na.rm = TRUE), digits = 7, scientific = FALSE)
+med_steps_NoNA <- format(median(activity_day$steps, na.rm = TRUE), digits = 7, scientific = FALSE)
+```
+
+The figure below shows the distribution of the total number of steps taken per day.
+
+```{r}
+hist(activity_day[["steps"]], breaks = 10, 
+     main = "Distribution of Total Number of Steps per Day",
+     xlab = "Steps per Day")
+```
+
+The minimum number of steps per day is `r min_steps_NoNA` and the maximum number  is `r max_steps_NoNA`. The mean number is `r mean_steps_NoNA` and the median is `r med_steps_NoNA`. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
